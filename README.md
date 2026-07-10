@@ -9,6 +9,8 @@ pinned: false
 
 # GeneRx AI
 
+> Forked from [scara0301/GeneRx-AI](https://github.com/scara0301/GeneRx-AI) — original work by Anirudh, KOUK-78, and Koushik S. Kept here for reference; see the upstream repo for active development.
+
 Clinical drug safety assessment powered by machine learning and FDA adverse event data.
 
 ## What It Does
