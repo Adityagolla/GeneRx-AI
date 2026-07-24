@@ -1,17 +1,18 @@
----
-title: GeneRx AI
-emoji: 💊
-colorFrom: indigo
-colorTo: blue
-sdk: docker
-pinned: false
----
+# 💊 GeneRx AI
 
-# GeneRx AI
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![XGBoost](https://img.shields.io/badge/XGBoost-006ACC?logo=xgboost&logoColor=white)](https://xgboost.readthedocs.io/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
 
 > Forked from [scara0301/GeneRx-AI](https://github.com/scara0301/GeneRx-AI) — original work by Anirudh, KOUK-78, and Koushik S. This fork extends that project with the features described below.
 
 Clinical drug safety assessment for a specific patient — not generic drug information. Given a patient's demographics, conditions, labs, current medications, and allergies, GeneRx AI evaluates how suitable a given drug is *for that patient*, combining an evidence-based rules engine with real FDA adverse-event data.
+
+<p align="center">
+  <img src="docs/screenshots/clinician-view.png" alt="GeneRx AI clinician view — searchable drug catalog grouped by category" width="800">
+</p>
 
 ## What It Does
 
@@ -24,6 +25,18 @@ Clinical drug safety assessment for a specific patient — not generic drug info
 - **Symptom / Brand-Name Search** — find a drug by generic name, common brand name ("Tylenol", "Crocin"), or symptom ("heartburn").
 - **Clinician & Patient Modes** — a full clinical form for prescribers, and a plain-language step-by-step wizard for patients.
 - **Downloadable Clinical Report** — a plain-text summary of the full assessment for a patient encounter.
+
+<p align="center">
+  <img src="docs/screenshots/assessment-alternatives.png" alt="Assessment result showing a Contraindicated verdict, FDA reporting signal, and re-validated alternative medications" width="800">
+</p>
+
+<p align="center"><em>Metformin flagged Contraindicated at low eGFR — alternatives are re-checked against the same patient before being suggested, and the FDA Reporting Signal (PRR) is shown separately from the per-event pattern match.</em></p>
+
+<p align="center">
+  <img src="docs/screenshots/patient-mode.png" alt="Patient mode — plain-language step-by-step wizard" width="800">
+</p>
+
+<p align="center"><em>Patient mode: the same rules engine, presented as a plain-language wizard with no medical jargon.</em></p>
 
 ## Safety Design
 
