@@ -7,9 +7,9 @@
     <title>GeneRx AI — Clinical Drug Assessment</title>
     <meta name="description"
         content="AI-powered clinical drug safety assessment using FDA adverse event data and evidence-based rules.">
-    <meta name="theme-color" content="#0a0e17">
+    <meta name="theme-color" content="#fbf8f3">
     <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' width='100' height='100' fill='%236366f1'/><text x='50' y='72' font-size='58' text-anchor='middle' fill='white' font-family='Arial'>Rx</text></svg>">
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect rx='18' width='100' height='100' fill='%230d9488'/><text x='50' y='72' font-size='58' text-anchor='middle' fill='white' font-family='Arial'>Rx</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
@@ -53,6 +53,16 @@
                 <button class="btn-icon" id="clearForm" title="Reset form">
                     <i data-lucide="rotate-ccw"></i>
                 </button>
+            </div>
+
+            <div class="form-section">
+                <div class="section-label">Upload Lab Report (optional)</div>
+                <label class="upload-dropzone" id="reportDropzone" for="reportUpload">
+                    <i data-lucide="upload-cloud"></i>
+                    <span id="reportUploadLabel">Upload a PDF lab report to pre-fill values below</span>
+                </label>
+                <input type="file" id="reportUpload" accept="application/pdf" hidden />
+                <div class="upload-review hidden" id="uploadReview"></div>
             </div>
 
             <form id="patientForm" autocomplete="off">
@@ -171,6 +181,8 @@
                     <h2>Drug Assessment</h2>
                     <p class="card-subtitle">Select medications to evaluate for this patient</p>
                 </div>
+                <input type="text" class="drug-search" id="drugSearch"
+                    placeholder="Search by drug name, brand name, or symptom (e.g. 'heartburn', 'Tylenol')" />
                 <div class="drug-grid" id="drugGrid"></div>
                 <button class="btn-primary" id="runAssessment" disabled>
                     <i data-lucide="activity"></i>
@@ -183,6 +195,10 @@
                 <div class="card-header">
                     <h2>Assessment Results</h2>
                     <div class="results-meta" id="resultsMeta"></div>
+                    <button class="btn-secondary" id="downloadReport" title="Download a plain-text clinical report">
+                        <i data-lucide="file-down"></i>
+                        <span>Download Report</span>
+                    </button>
                 </div>
 
                 <!-- Summary Table -->
@@ -203,10 +219,19 @@
                 <!-- ML Insights -->
                 <div class="ml-section hidden" id="mlSection">
                     <div class="card-header">
-                        <h3>ML Risk Analysis</h3>
-                        <p class="card-subtitle">Predictions from FDA adverse event model</p>
+                        <h3>Historical FDA Reporting Pattern</h3>
+                        <p class="card-subtitle">Reflects how this drug's past adverse-event reports were characterized — not a personalized risk calculation for this patient</p>
                     </div>
                     <canvas id="mlChart" height="200"></canvas>
+                </div>
+
+                <!-- Response Trajectory -->
+                <div class="ml-section hidden" id="responseSection">
+                    <div class="card-header">
+                        <h3>Expected Response Trajectory</h3>
+                        <p class="card-subtitle">Simulated therapeutic response over time, based on suitability</p>
+                    </div>
+                    <canvas id="responseChart" height="200"></canvas>
                 </div>
             </div>
 

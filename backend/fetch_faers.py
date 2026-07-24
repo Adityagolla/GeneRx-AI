@@ -31,6 +31,8 @@ def fetch_drug_events(drug_name, max_records=2000):
     all_records = []
     batch_size = 100  # openFDA max per request
     skip = 0
+    consecutive_errors = 0
+    max_consecutive_errors = 5  # give up on this drug rather than retry forever
 
     print(f"  Fetching events for {drug_name}...")
 
@@ -46,9 +48,14 @@ def fetch_drug_events(drug_name, max_records=2000):
                 print(f"    No results found for {drug_name}")
                 break
             if resp.status_code != 200:
-                print(f"    API error {resp.status_code}, retrying...")
+                consecutive_errors += 1
+                if consecutive_errors > max_consecutive_errors:
+                    print(f"    Giving up on {drug_name} after {max_consecutive_errors} consecutive errors (last: {resp.status_code}).")
+                    break
+                print(f"    API error {resp.status_code}, retrying ({consecutive_errors}/{max_consecutive_errors})...")
                 time.sleep(2)
                 continue
+            consecutive_errors = 0
 
             data = resp.json()
             results = data.get("results", [])
@@ -99,10 +106,14 @@ def fetch_drug_events(drug_name, max_records=2000):
                 reaction_list = [r.get("reactionmeddrapt", "") for r in reactions if r.get("reactionmeddrapt")]
                 reaction_outcomes = [r.get("reactionoutcome", "0") for r in reactions]
 
-                # Find the target drug entry for role/indication
+                # Find the target drug entry for role/indication, and
+                # collect the *names* of the other drugs on this report (not
+                # just a count) so interaction-style features can be built
+                # downstream (e.g. "is this patient also on an NSAID").
                 drug_role = "Unknown"
                 indication = ""
-                for d in drugs:
+                target_idx = None
+                for i, d in enumerate(drugs):
                     gnames = d.get("openfda", {}).get("generic_name", [])
                     if any(drug_name.lower() in g.lower() for g in gnames):
                         drug_role = {
@@ -111,7 +122,14 @@ def fetch_drug_events(drug_name, max_records=2000):
                             "3": "Concomitant",
                         }.get(d.get("drugcharacterization", "0"), "Unknown")
                         indication = d.get("drugindication", "")
+                        target_idx = i
                         break
+
+                concomitant_names = [
+                    d.get("medicinalproduct", "")
+                    for i, d in enumerate(drugs)
+                    if i != target_idx and d.get("medicinalproduct")
+                ]
 
                 record = {
                     "drug_name": drug_name,
@@ -129,6 +147,7 @@ def fetch_drug_events(drug_name, max_records=2000):
                     "indication": indication,
                     "reaction_outcomes": "|".join(reaction_outcomes),
                     "num_concomitant_drugs": len(drugs) - 1,
+                    "concomitant_drug_names": "|".join(concomitant_names),
                 }
                 all_records.append(record)
 
@@ -136,7 +155,11 @@ def fetch_drug_events(drug_name, max_records=2000):
             time.sleep(0.3)  # Rate limiting
 
         except requests.exceptions.RequestException as e:
-            print(f"    Network error: {e}, retrying in 3s...")
+            consecutive_errors += 1
+            if consecutive_errors > max_consecutive_errors:
+                print(f"    Giving up on {drug_name} after {max_consecutive_errors} consecutive network errors ({e}).")
+                break
+            print(f"    Network error: {e}, retrying in 3s ({consecutive_errors}/{max_consecutive_errors})...")
             time.sleep(3)
             continue
 
@@ -153,7 +176,7 @@ def main():
     all_events = []
 
     for drug in TARGET_DRUGS:
-        events = fetch_drug_events(drug, max_records=5000)
+        events = fetch_drug_events(drug, max_records=1500)
         all_events.extend(events)
         time.sleep(1)  # Pause between drugs
 

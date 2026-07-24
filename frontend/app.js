@@ -13,6 +13,8 @@ let selectedDrugs = new Set();
 let drugCatalog = [];
 let patientWizardStep = 1;
 let patientData = {};
+let lastAssessmentPayload = null; // { patient, drugs } — reused by downloadReport()
+let highlightedCategories = new Set(); // drug categories suggested by an uploaded report
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -31,8 +33,177 @@ function setupEventListeners() {
     // Run assessment
     document.getElementById('runAssessment').addEventListener('click', runAssessment);
 
+    // Drug search / symptom filter
+    document.getElementById('drugSearch').addEventListener('input', renderDrugGrid);
+
     // Clear form
     document.getElementById('clearForm').addEventListener('click', resetForm);
+
+    // Download report
+    document.getElementById('downloadReport').addEventListener('click', downloadReport);
+
+    // Upload lab report
+    document.getElementById('reportUpload').addEventListener('change', handleReportUpload);
+}
+
+// ── Lab Report Upload ─────────────────────────────────────────────────────
+
+// Maps report_parser.py field names to the form input they pre-fill.
+// "ast" has no field of its own — the form's single ALT input already
+// doubles as both alt and ast in collectPatientProfile(), so an AST-only
+// report value falls back into the same box.
+const REPORT_FIELD_TO_INPUT = {
+    age: 'patientAge',
+    weight_kg: 'patientWeight',
+    egfr: 'labEgfr',
+    alt: 'labAlt',
+    hba1c: 'labHba1c',
+    systolic_bp: 'labSbp',
+    ldl: 'labLdl',
+    inr: 'labInr',
+};
+
+async function handleReportUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const label = document.getElementById('reportUploadLabel');
+    const review = document.getElementById('uploadReview');
+    label.textContent = `Parsing ${file.name}...`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch(`${API_BASE}/api/parse-report`, {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || `API returned ${resp.status}`);
+
+        applyParsedFields(data.patient_fields || {});
+        renderUploadReview(data);
+        suggestFromReport(data.patient_fields || {});
+        label.textContent = `Loaded ${file.name} — review the pre-filled values below`;
+    } catch (err) {
+        console.error('Report parse error:', err);
+        label.textContent = 'Upload a PDF lab report to pre-fill values below';
+        review.classList.remove('hidden');
+        review.innerHTML = `<div class="upload-review-error">Could not parse this file: ${err.message}</div>`;
+    } finally {
+        event.target.value = ''; // allow re-uploading the same file
+    }
+}
+
+function applyParsedFields(fields) {
+    if (fields.sex) {
+        document.getElementById('patientSex').value = fields.sex;
+    }
+    for (const [field, inputId] of Object.entries(REPORT_FIELD_TO_INPUT)) {
+        if (fields[field] === undefined) continue;
+        const el = document.getElementById(inputId);
+        if (el) el.value = fields[field];
+    }
+}
+
+function renderUploadReview(data) {
+    const review = document.getElementById('uploadReview');
+    review.classList.remove('hidden');
+
+    const matched = data.matched || [];
+    let html = `<div class="upload-review-notice">
+        <i data-lucide="alert-triangle"></i>
+        Extracted from your report — please double-check these values before running an assessment.
+    </div>`;
+
+    if (matched.length) {
+        html += '<ul class="upload-review-list">';
+        html += matched.map(m => `<li><strong>${m.field}</strong> ← ${m.test_name}: ${m.raw_value} ${m.unit}${m.converted_to_mmol_l ? ' (converted to mmol/L)' : ''}</li>`).join('');
+        html += '</ul>';
+    }
+    if (data.warning) {
+        html += `<div class="upload-review-error">${data.warning}</div>`;
+    }
+
+    review.innerHTML = html;
+    lucide.createIcons();
+}
+
+// ── Report-Based Drug Suggestions ────────────────────────────────────────
+// Derives likely conditions from parsed lab values using the same
+// thresholds the clinical rules engine already uses (HbA1c ≥6.5% for
+// diabetes, SBP ≥140 for hypertension, LDL >3.0 mmol/L for lipid risk), then
+// highlights the matching drug categories and pre-checks the matching
+// condition checkbox. Nothing here runs an assessment or is non-editable —
+// it's a starting point, same as the pre-filled lab values themselves.
+const REPORT_SUGGESTION_RULES = [
+    {
+        test: f => f.hba1c !== undefined && f.hba1c >= 6.5,
+        label: 'Diabetes',
+        conditionValue: 'Diabetes',
+        categories: ['Diabetes'],
+        reason: f => `HbA1c ${f.hba1c}% (≥6.5% is diagnostic for diabetes)`,
+    },
+    {
+        test: f => f.systolic_bp !== undefined && f.systolic_bp >= 140,
+        label: 'Hypertension',
+        conditionValue: 'Hypertension',
+        categories: ['Cardiovascular'],
+        reason: f => `Systolic BP ${f.systolic_bp} mmHg (≥140 is hypertensive range)`,
+    },
+    {
+        test: f => f.ldl !== undefined && f.ldl > 3.0,
+        label: 'Elevated Cholesterol',
+        conditionValue: null,
+        categories: ['Cardiovascular'],
+        reason: f => `LDL ${f.ldl} mmol/L (>3.0 suggests statin therapy may be indicated)`,
+    },
+    {
+        test: f => f.egfr !== undefined && f.egfr < 60,
+        label: 'Reduced Kidney Function',
+        conditionValue: 'CKD (Chronic Kidney Disease)',
+        categories: [],
+        reason: f => `eGFR ${f.egfr} mL/min/1.73m² (<60 — several drug doses need adjustment)`,
+    },
+];
+
+function suggestFromReport(fields) {
+    const matches = REPORT_SUGGESTION_RULES.filter(rule => rule.test(fields));
+    highlightedCategories = new Set(matches.flatMap(m => m.categories));
+
+    matches.forEach(m => {
+        if (!m.conditionValue) return;
+        const cb = document.querySelector(`#conditionsGrid input[value="${m.conditionValue}"]`);
+        if (cb) cb.checked = true;
+    });
+
+    renderSuggestionBanner(fields, matches);
+    renderDrugGrid();
+}
+
+function renderSuggestionBanner(fields, matches) {
+    let banner = document.getElementById('reportSuggestionBanner');
+    if (!matches.length) {
+        if (banner) banner.classList.add('hidden');
+        return;
+    }
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'reportSuggestionBanner';
+        banner.className = 'suggestion-banner';
+        const grid = document.getElementById('drugGrid');
+        grid.parentNode.insertBefore(banner, grid);
+    }
+    banner.classList.remove('hidden');
+    banner.innerHTML = `
+        <div class="suggestion-banner-title"><i data-lucide="lightbulb"></i> Based on this report, you may want to check:</div>
+        <ul class="suggestion-banner-list">
+            ${matches.map(m => `<li><strong>${m.label}</strong> — ${m.reason(fields)}</li>`).join('')}
+        </ul>
+        <div class="suggestion-banner-note">Matching medication categories are highlighted below. Conditions were pre-checked in the sidebar — review and adjust as needed.</div>
+    `;
+    lucide.createIcons();
 }
 
 // ── API ───────────────────────────────────────────────────────────────────
@@ -45,7 +216,7 @@ async function checkApiStatus() {
         if (resp.ok) {
             const data = await resp.json();
             dot.className = 'status-dot online';
-            text.textContent = data.ml_model_loaded ? 'ML Model Active' : 'Rules Engine Only';
+            text.textContent = data.ml_model_loaded ? 'Rules Engine + Reporting Pattern Data' : 'Rules Engine Only';
         } else throw new Error();
     } catch {
         dot.className = 'status-dot offline';
@@ -108,13 +279,50 @@ function switchMode(mode) {
 
 // ── Drug Grid ─────────────────────────────────────────────────────────────
 
+function drugMatchesSearch(d, query) {
+    if (!query) return true;
+    const haystack = [
+        d.name,
+        ...(d.brand_names || []),
+        ...(d.indications || []),
+        d.category || '',
+    ].join(' ').toLowerCase();
+    return haystack.includes(query);
+}
+
 function renderDrugGrid() {
     const grid = document.getElementById('drugGrid');
-    grid.innerHTML = drugCatalog.map(d => `
-        <div class="drug-card ${selectedDrugs.has(d.name) ? 'selected' : ''}"
-             data-drug="${d.name}" onclick="toggleDrug('${d.name}')">
-            <div class="drug-card-name">${d.name}</div>
-            <div class="drug-card-cat">${d.category || d.description || ''}</div>
+    const query = (document.getElementById('drugSearch')?.value || '').trim().toLowerCase();
+    const filtered = drugCatalog.filter(d => drugMatchesSearch(d, query));
+
+    // Group by therapeutic category so users unfamiliar with drug names can
+    // browse by what the drug is for, not just its name.
+    const groups = {};
+    filtered.forEach(d => {
+        const cat = d.category || 'Other';
+        (groups[cat] = groups[cat] || []).push(d);
+    });
+
+    if (!filtered.length) {
+        grid.innerHTML = `<div class="drug-grid-empty">No drugs match "${query}".</div>`;
+        updateRunButton();
+        return;
+    }
+
+    grid.innerHTML = Object.entries(groups).map(([cat, drugs]) => `
+        <div class="drug-group ${highlightedCategories.has(cat) ? 'suggested' : ''}">
+            <div class="drug-group-label">${cat}${highlightedCategories.has(cat) ? ' <span class="drug-group-suggested-tag">Suggested</span>' : ''}</div>
+            <div class="drug-group-items">
+                ${drugs.map(d => {
+                    const brands = (d.brand_names || []).length ? ` <span class="drug-card-brand">(${d.brand_names.join(', ')})</span>` : '';
+                    return `
+                    <div class="drug-card ${selectedDrugs.has(d.name) ? 'selected' : ''}"
+                         data-drug="${d.name}" onclick="toggleDrug('${d.name}')">
+                        <div class="drug-card-name">${d.name}${brands}</div>
+                        <div class="drug-card-cat">${(d.indications || []).join(', ') || d.description || ''}</div>
+                    </div>`;
+                }).join('')}
+            </div>
         </div>
     `).join('');
     updateRunButton();
@@ -188,6 +396,7 @@ async function runAssessment() {
 
     const patient = collectPatientProfile();
     const drugs = Array.from(selectedDrugs);
+    lastAssessmentPayload = { patient, drugs };
 
     try {
         const resp = await fetch(`${API_BASE}/api/assess`, {
@@ -243,8 +452,98 @@ function renderResults(data) {
     // ML chart
     renderMLChart(assessments);
 
+    // Response trajectory chart
+    renderResponseChart(assessments);
+
     // Scroll to results
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Report Download ───────────────────────────────────────────────────────
+
+async function downloadReport() {
+    if (!lastAssessmentPayload) return;
+
+    const btn = document.getElementById('downloadReport');
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch(`${API_BASE}/api/report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(lastAssessmentPayload),
+        });
+        if (!resp.ok) throw new Error(`API returned ${resp.status}`);
+        const data = await resp.json();
+
+        const blob = new Blob([data.report], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const safeName = (lastAssessmentPayload.patient.name || 'patient').replace(/[^a-z0-9]+/gi, '_');
+        a.href = url;
+        a.download = `GeneRx-AI_Report_${safeName}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error('Report download error:', err);
+        alert('Could not generate the report. Make sure the backend is running.');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ── Response Trajectory Chart ─────────────────────────────────────────────
+
+function renderResponseChart(assessments) {
+    const section = document.getElementById('responseSection');
+    const withCurve = assessments.filter(a => Array.isArray(a.response_curve) && a.response_curve.length);
+
+    if (!withCurve.length) {
+        section.classList.add('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+
+    const ctx = document.getElementById('responseChart').getContext('2d');
+    if (window._responseChart) window._responseChart.destroy();
+
+    const steps = withCurve[0].response_curve.length;
+    const labels = Array.from({ length: steps }, (_, i) => `Week ${i}`);
+    const palette = ['#0d9488', '#16a34a', '#d97706', '#dc2626', '#0ea5e9', '#a855f7'];
+
+    const datasets = withCurve.map((a, i) => ({
+        label: a.drug_name,
+        data: a.response_curve,
+        borderColor: palette[i % palette.length],
+        backgroundColor: 'transparent',
+        tension: 0.3,
+        pointRadius: 2,
+    }));
+
+    window._responseChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: '#8b948e', font: { family: 'Inter', size: 11 } } },
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#8b948e', font: { family: 'Inter' } },
+                    grid: { color: 'rgba(64,52,38,0.06)' },
+                },
+                y: {
+                    min: 0,
+                    max: 1,
+                    ticks: { color: '#8b948e', font: { family: 'Inter' } },
+                    grid: { color: 'rgba(64,52,38,0.06)' },
+                },
+            },
+        },
+    });
 }
 
 function riskClass(suitability) {
@@ -266,7 +565,7 @@ function renderSummaryTable(assessments) {
                     <th>Drug</th>
                     <th>Suitability</th>
                     <th>Risk Level</th>
-                    <th>ML Confidence</th>
+                    <th title="How closely this event resembles historically severe FDA reports for this drug — not a personalized risk score">Reporting Pattern Match</th>
                     <th>Key Concern</th>
                 </tr>
             </thead>
@@ -307,6 +606,27 @@ function renderInteractions(interactions) {
             <div>${ix.message}</div>
         </div>
     `).join('');
+}
+
+// PRR (Proportional Reporting Ratio) is a population-level statistic — it's
+// the same number for every patient assessed on this drug, by design (see
+// backend/pharmacovigilance.py). Deliberately rendered as its own row,
+// separate from the per-event "Reporting Pattern Match" chart, so the two
+// very different kinds of number don't get visually conflated.
+function renderFaersSignalRow(signal) {
+    if (!signal || signal.prr === null || signal.prr === undefined) return '';
+    const flagged = signal.signal_detected;
+    return `
+        <div class="detail-row">
+            <div class="detail-label">FDA Reporting Signal</div>
+            <div class="detail-value">
+                <div class="${flagged ? 'prr-flagged' : ''}">
+                    PRR ${signal.prr} ${flagged ? '— disproportionately severe reports vs. other catalog drugs' : '— no disproportionate signal vs. other catalog drugs'}
+                    <span style="color:var(--text-muted)"> (${signal.n_reports} FDA reports, ${signal.n_serious} serious)</span>
+                </div>
+                <div class="alt-disclaimer">Population-level statistic comparing this drug's reports against the other drugs in this app's dataset only — not the full FDA database, and not specific to this patient.</div>
+            </div>
+        </div>`;
 }
 
 function renderDetailCards(assessments) {
@@ -367,6 +687,22 @@ function renderDetailCards(assessments) {
                         </ul>
                     </div>
                 </div>` : ''}
+                ${renderFaersSignalRow(a.faers_signal)}
+                ${a.alternatives?.length ? `
+                <div class="detail-row">
+                    <div class="detail-label">Suggested Alternatives</div>
+                    <div class="detail-value">
+                        <ul class="detail-list alt-list">
+                            ${a.alternatives.map(alt => `
+                                <li>
+                                    <strong>${alt.drug_name}</strong>${alt.brand_names?.length ? ` (${alt.brand_names.join(', ')})` : ''}
+                                    <span class="risk-badge ${riskClass(alt.suitability)}" style="margin-left:6px">${alt.suitability}</span>
+                                    <div style="margin-top:2px;color:var(--text-secondary);font-size:0.78rem">${alt.rationale}</div>
+                                </li>`).join('')}
+                        </ul>
+                        <div class="alt-disclaimer">Re-checked against this patient's profile — still confirm with a clinician before switching.</div>
+                    </div>
+                </div>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -408,10 +744,10 @@ function renderMLChart(assessments) {
     });
 
     const colorMap = {
-        'Low Risk': '#22c55e',
-        'Moderate': '#f59e0b',
-        'High Risk': '#ef4444',
-        'Critical': '#dc2626',
+        'Low Risk': '#16a34a',
+        'Moderate': '#d97706',
+        'High Risk': '#dc2626',
+        'Critical': '#991b1b',
     };
 
     const datasets = Object.entries(probData).map(([label, values]) => ({
@@ -428,24 +764,24 @@ function renderMLChart(assessments) {
             responsive: true,
             plugins: {
                 legend: {
-                    labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+                    labels: { color: '#8b948e', font: { family: 'Inter', size: 11 } }
                 },
             },
             scales: {
                 x: {
                     stacked: true,
-                    ticks: { color: '#94a3b8', font: { family: 'Inter' } },
-                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    ticks: { color: '#8b948e', font: { family: 'Inter' } },
+                    grid: { color: 'rgba(64,52,38,0.06)' },
                 },
                 y: {
                     stacked: true,
                     max: 100,
                     ticks: {
-                        color: '#94a3b8',
+                        color: '#8b948e',
                         font: { family: 'Inter' },
                         callback: v => v + '%'
                     },
-                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    grid: { color: 'rgba(64,52,38,0.06)' },
                 },
             },
         },
@@ -708,6 +1044,10 @@ function resetForm() {
     document.getElementById('labLdl').value = 3.0;
     document.getElementById('labInr').value = 1.0;
     selectedDrugs.clear();
+    highlightedCategories.clear();
+    document.getElementById('reportSuggestionBanner')?.classList.add('hidden');
+    document.getElementById('uploadReview').classList.add('hidden');
+    document.getElementById('reportUploadLabel').textContent = 'Upload a PDF lab report to pre-fill values below';
     renderDrugGrid();
     document.getElementById('resultsCard').classList.add('hidden');
 }

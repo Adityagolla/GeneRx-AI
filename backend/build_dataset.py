@@ -95,8 +95,18 @@ def compute_sider_features(df_se, df_freq):
 
 try:
     from backend.utils import get_reaction_severity
+    from backend.drug_features import (
+        get_pharmacology_features, get_interaction_features,
+        PHARMACOLOGY_FEATURE_NAMES, INTERACTION_FEATURE_NAMES,
+    )
+    from backend.pharmacovigilance import compute_prr_signals, save_signals
 except ImportError:
     from utils import get_reaction_severity
+    from drug_features import (
+        get_pharmacology_features, get_interaction_features,
+        PHARMACOLOGY_FEATURE_NAMES, INTERACTION_FEATURE_NAMES,
+    )
+    from pharmacovigilance import compute_prr_signals, save_signals
 
 def build_training_data(faers_df, sider_features):
     """Build training dataset by combining FAERS events with SIDER features."""
@@ -129,6 +139,27 @@ def build_training_data(faers_df, sider_features):
 
     # New Feature: Primary Suspect Flag
     faers_df["is_primary_suspect"] = (faers_df["drug_role"] == "Primary Suspect").astype(int)
+
+    # New Features: drug pharmacology (half-life, clearance route, protein
+    # binding, CYP enzymes, black-box warning) — static per-drug metadata
+    # from drug_features.py, the same lookup used at live-inference time so
+    # training and serving can never compute this differently.
+    pharma_df = faers_df["drug_name"].apply(get_pharmacology_features).apply(pd.Series)
+    for col in PHARMACOLOGY_FEATURE_NAMES:
+        faers_df[col] = pharma_df[col]
+
+    # New Features: concomitant-drug interaction counts (NSAIDs, QT-prolonging
+    # agents, sedatives, CYP3A4 inhibitors also being taken) — computed from
+    # the actual concomitant drug names FAERS reported, not just a raw count.
+    if "concomitant_drug_names" in faers_df.columns:
+        concomitant_lists = faers_df["concomitant_drug_names"].fillna("").apply(
+            lambda s: s.split("|") if s else []
+        )
+    else:
+        concomitant_lists = pd.Series([[]] * len(faers_df), index=faers_df.index)
+    interaction_df = concomitant_lists.apply(get_interaction_features).apply(pd.Series)
+    for col in INTERACTION_FEATURE_NAMES:
+        faers_df[col] = interaction_df[col]
 
     # Add SIDER features
     faers_df["known_side_effects_count"] = faers_df["drug_name"].map(
@@ -172,6 +203,8 @@ def build_training_data(faers_df, sider_features):
         "known_side_effects_count",
         "mean_se_frequency",
         "max_se_frequency",
+        *PHARMACOLOGY_FEATURE_NAMES,
+        *INTERACTION_FEATURE_NAMES,
         "risk_category",
     ]
 
@@ -193,6 +226,15 @@ def main():
     # Compute features
     drug_profiles = compute_drug_risk_profile(faers_df)
     sider_features = compute_sider_features(df_se, df_freq)
+
+    # Population-level PRR signal detection (separate from the per-event
+    # training features below — see pharmacovigilance.py for why).
+    print("\nComputing PRR (Proportional Reporting Ratio) signals...")
+    signals = compute_prr_signals(faers_df)
+    save_signals(signals)
+    for drug, sig in signals.items():
+        flag = " <- SIGNAL" if sig["signal_detected"] else ""
+        print(f"  {drug:15s} PRR={sig['prr']}  chi2={sig['chi_square']}  n={sig['n_reports']}{flag}")
 
     # Build training data
     df_train = build_training_data(faers_df, sider_features)

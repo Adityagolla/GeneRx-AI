@@ -16,6 +16,8 @@ DRUG_CATALOG = {
     "Metformin": {
         "category": "Diabetes",
         "class": "Biguanide",
+        "brand_names": ["Glucophage", "Glycomet", "Fortamet"],
+        "indications": ["Type 2 diabetes", "High blood sugar", "Prediabetes", "PCOS"],
         "description": "First-line oral diabetes medication that lowers blood sugar",
         "mechanism": "Reduces glucose production in the liver; improves insulin sensitivity",
         "monitoring": ["eGFR (every 6–12 months)", "Vitamin B12 (annually)", "HbA1c (every 3 months)"],
@@ -30,6 +32,8 @@ DRUG_CATALOG = {
     "Atorvastatin": {
         "category": "Cardiovascular",
         "class": "Statin",
+        "brand_names": ["Lipitor", "Atorlip", "Storvas"],
+        "indications": ["High cholesterol", "High LDL", "Heart disease prevention"],
         "description": "Cholesterol-lowering medication to reduce heart disease risk",
         "mechanism": "Inhibits HMG-CoA reductase to reduce LDL cholesterol",
         "monitoring": ["LDL Cholesterol (annually)", "Liver enzymes (ALT/AST) baseline then if symptoms"],
@@ -44,6 +48,8 @@ DRUG_CATALOG = {
     "Amlodipine": {
         "category": "Cardiovascular",
         "class": "Calcium Channel Blocker",
+        "brand_names": ["Norvasc", "Amlopres", "Amlong"],
+        "indications": ["High blood pressure", "Chest pain", "Angina"],
         "description": "Blood pressure and chest pain medication",
         "mechanism": "Relaxes blood vessels by blocking calcium entry into arterial muscle cells",
         "monitoring": ["Blood Pressure (monthly until stable)", "Ankle swelling"],
@@ -58,6 +64,8 @@ DRUG_CATALOG = {
     "Ramipril": {
         "category": "Cardiovascular",
         "class": "ACE Inhibitor",
+        "brand_names": ["Altace", "Cardace", "Ramace"],
+        "indications": ["High blood pressure", "Heart failure", "Kidney protection in diabetes"],
         "description": "Blood pressure medication that also protects the kidneys in diabetes",
         "mechanism": "Blocks angiotensin-converting enzyme to reduce blood pressure",
         "monitoring": ["eGFR + Potassium (within 2 weeks of starting)", "Blood Pressure (monthly)"],
@@ -72,6 +80,8 @@ DRUG_CATALOG = {
     "Metoprolol": {
         "category": "Cardiovascular",
         "class": "Beta Blocker",
+        "brand_names": ["Lopressor", "Toprol-XL", "Betaloc"],
+        "indications": ["High blood pressure", "Fast heart rate", "Angina", "Heart failure"],
         "description": "Heart rate and blood pressure medication",
         "mechanism": "Blocks beta-adrenergic receptors to slow heart rate and reduce blood pressure",
         "monitoring": ["Heart rate", "Blood Pressure", "Blood sugar (masks hypoglycaemia symptoms)"],
@@ -86,6 +96,8 @@ DRUG_CATALOG = {
     "Warfarin": {
         "category": "Anticoagulant",
         "class": "Vitamin K Antagonist",
+        "brand_names": ["Coumadin", "Jantoven"],
+        "indications": ["Blood clots", "Atrial fibrillation", "Stroke prevention", "DVT / PE"],
         "description": "Blood thinner to prevent clots and stroke",
         "mechanism": "Inhibits Vitamin K-dependent clotting factors",
         "monitoring": ["INR (weekly initially, then monthly)", "Signs of bleeding"],
@@ -100,6 +112,8 @@ DRUG_CATALOG = {
     "Amoxicillin": {
         "category": "Antibiotic",
         "class": "Penicillin",
+        "brand_names": ["Amoxil", "Novamox", "Trimox"],
+        "indications": ["Bacterial infection", "Throat infection", "Ear infection", "UTI"],
         "description": "Common antibiotic for bacterial infections",
         "mechanism": "Inhibits bacterial cell wall synthesis",
         "monitoring": ["Signs of allergic reaction", "Resolution of infection"],
@@ -114,6 +128,8 @@ DRUG_CATALOG = {
     "Ibuprofen": {
         "category": "Pain & Inflammation",
         "class": "NSAID",
+        "brand_names": ["Advil", "Brufen", "Motrin"],
+        "indications": ["Pain", "Fever", "Headache", "Inflammation", "Muscle ache"],
         "description": "Anti-inflammatory painkiller for pain, fever, and swelling",
         "mechanism": "Inhibits COX enzymes to reduce prostaglandin synthesis",
         "monitoring": ["Kidney function (if prolonged use)", "Blood pressure", "GI symptoms"],
@@ -128,6 +144,8 @@ DRUG_CATALOG = {
     "Paracetamol": {
         "category": "Pain & Fever",
         "class": "Analgesic",
+        "brand_names": ["Tylenol", "Crocin", "Dolo 650", "Acetaminophen"],
+        "indications": ["Pain", "Fever", "Headache", "Cold & flu symptoms"],
         "description": "Safe, mild painkiller and fever reducer",
         "mechanism": "Central pain relief; mechanism not fully understood",
         "monitoring": ["Liver enzymes (if chronic high-dose use)", "Avoid alcohol"],
@@ -140,6 +158,8 @@ DRUG_CATALOG = {
     "Omeprazole": {
         "category": "Gastrointestinal",
         "class": "Proton Pump Inhibitor",
+        "brand_names": ["Prilosec", "Omez", "Losec"],
+        "indications": ["Heartburn", "Acid reflux", "GERD", "Stomach ulcer"],
         "description": "Reduces stomach acid for heartburn, ulcers, and acid reflux",
         "mechanism": "Irreversibly inhibits gastric H+/K+-ATPase pump",
         "monitoring": ["Magnesium (long-term use)", "Vitamin B12 (long-term use)"],
@@ -151,6 +171,75 @@ DRUG_CATALOG = {
             "Bone Density Decrease (long-term)": 0.02,
         },
     },
+    "Empagliflozin": {
+        "category": "Diabetes",
+        "class": "SGLT2 Inhibitor",
+        "brand_names": ["Jardiance"],
+        "indications": ["Type 2 diabetes", "Heart failure", "Kidney protection"],
+        "description": "Diabetes medication that lowers blood sugar by removing glucose through urine",
+        "mechanism": "Blocks glucose reabsorption in the kidney (SGLT2), increasing urinary glucose excretion",
+        "monitoring": ["eGFR (before starting and periodically)", "Signs of DKA", "Genital hygiene / infection symptoms"],
+        "side_effects": {
+            "Genital Yeast Infection": 0.10,
+            "Urinary Tract Infection": 0.05,
+            "Increased Urination": 0.08,
+            "Volume Depletion / Dizziness": 0.04,
+            "Diabetic Ketoacidosis (rare)": 0.005,
+        },
+    },
+    "Linagliptin": {
+        "category": "Diabetes",
+        "class": "DPP-4 Inhibitor",
+        "brand_names": ["Tradjenta"],
+        "indications": ["Type 2 diabetes"],
+        "description": "Diabetes medication that boosts the body's own insulin response after meals",
+        "mechanism": "Inhibits DPP-4 to prolong incretin hormone activity, increasing glucose-dependent insulin release",
+        "monitoring": ["HbA1c (every 3 months)", "Signs of pancreatitis"],
+        "side_effects": {
+            "Nasopharyngitis": 0.06,
+            "Headache": 0.04,
+            "Joint Pain": 0.02,
+            "Pancreatitis (rare)": 0.003,
+        },
+    },
+    "Insulin Glargine": {
+        "category": "Diabetes",
+        "class": "Long-Acting Insulin",
+        "brand_names": ["Lantus", "Basaglar", "Toujeo"],
+        "indications": ["Type 1 diabetes", "Type 2 diabetes", "High blood sugar not controlled by oral agents"],
+        "description": "Long-acting injectable insulin providing steady background blood sugar control",
+        "mechanism": "Exogenous basal insulin analog; promotes glucose uptake and suppresses hepatic glucose output",
+        "monitoring": ["Blood glucose (daily self-monitoring)", "HbA1c (every 3 months)", "Injection site rotation"],
+        "side_effects": {
+            "Hypoglycemia": 0.20,
+            "Weight Gain": 0.10,
+            "Injection Site Reaction": 0.05,
+        },
+    },
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ALTERNATIVE-DRUG SUGGESTIONS
+#
+# Candidate alternatives per drug, keyed by the reason the original drug was
+# flagged. Suggesting a fixed alternative without re-checking it would be
+# unsafe (e.g. Empagliflozin is itself renal-dependent) — see
+# get_alternatives(), which re-runs evaluate_drug() on each candidate against
+# the *same* patient and only returns the ones that come back Suitable/Caution.
+# ─────────────────────────────────────────────────────────────────────────────
+DRUG_ALTERNATIVES = {
+    "Metformin": [
+        ("Empagliflozin", "SGLT2 inhibitor with added cardiovascular/renal benefit — a common first substitution when Metformin is renally contraindicated, though it has its own eGFR floor."),
+        ("Linagliptin", "DPP-4 inhibitor uniquely requiring no dose adjustment across all stages of renal impairment, unlike most other oral antidiabetics."),
+        ("Insulin Glargine", "Not renally cleared or dose-limited by kidney function — the standard fallback when oral agents are contraindicated by significant renal disease."),
+    ],
+    "Ramipril": [
+        ("Amlodipine", "Calcium channel blocker that lowers blood pressure without affecting potassium or renal perfusion the way ACE inhibitors do."),
+    ],
+    "Metoprolol": [
+        ("Amlodipine", "Controls blood pressure without the bronchoconstriction risk beta-blockers carry in asthma/COPD."),
+        ("Ramipril", "ACE inhibitor alternative for blood pressure / heart failure control that doesn't affect airway tone."),
+    ],
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -258,15 +347,17 @@ def evaluate_drug(patient: dict, drug_name: str) -> dict:
     # Per-drug clinical rules
     # ─────────────────────────────────────────────────────────────────────────
     if drug_name == "Metformin":
-        # CKD contraindication
+        # CKD contraindication — dose caps per standard renal dosing bands
         if egfr < 30:
             suitability = "Contraindicated"
             reasons.append(f"eGFR {egfr} mL/min/1.73m² is <30 → Metformin contraindicated (lactic acidosis risk).")
         elif egfr < 45:
             suitability = "Caution"
             reasons.append(f"eGFR {egfr} mL/min/1.73m² is 30–44 → Reduce Metformin dose; monitor renal function closely.")
+            dose_notes.append("Renal dose cap: max 1000 mg/day (e.g. 500 mg BID), do not initiate new therapy at this eGFR.")
         else:
             reasons.append(f"eGFR {egfr} mL/min/1.73m² is adequate for Metformin.")
+            dose_notes.append("Usual dose: up to 2000 mg/day in divided doses (start 500 mg BID, titrate).")
 
         if "diabetes" in conditions or hba1c >= 6.5:
             reasons.append("Indicated: Diabetes diagnosed (or HbA1c ≥6.5%). First-line choice per guidelines.")
@@ -308,12 +399,14 @@ def evaluate_drug(patient: dict, drug_name: str) -> dict:
         if egfr < 30:
             suitability = "Caution"
             reasons.append(f"eGFR {egfr}: ACE inhibitors may worsen kidney function if eGFR <30. Use only with nephrology input.")
-            dose_notes.append("Start at lowest dose; recheck eGFR and potassium within 1–2 weeks.")
-        elif egfr < 45:
+            dose_notes.append("Renal dose cap: start 1.25 mg every other day, max 2.5 mg/day; recheck eGFR and potassium within 1–2 weeks.")
+        elif egfr < 60:
             suitability = "Caution"
             reasons.append(f"eGFR {egfr}: Reduce dose; monitor eGFR and potassium closely.")
+            dose_notes.append("Renal dose cap: start 1.25 mg/day, max 5 mg/day.")
         else:
             reasons.append(f"eGFR {egfr}: renal function adequate for Ramipril.")
+            dose_notes.append("Usual dose: start 2.5 mg/day, max 10 mg/day.")
 
         if "diabetes" in conditions:
             reasons.append("Beneficial: ACE inhibitors are kidney-protective in patients with diabetes — strongly indicated.")
@@ -367,8 +460,10 @@ def evaluate_drug(patient: dict, drug_name: str) -> dict:
         else:
             reasons.append("No penicillin allergy documented — Amoxicillin structurally appropriate.")
 
-        if egfr < 30:
-            dose_notes.append(f"eGFR {egfr}: Reduce Amoxicillin dose and extend dosing interval in severe CKD.")
+        if egfr < 10:
+            dose_notes.append(f"eGFR {egfr}: Renal dose cap: 500 mg once daily.")
+        elif egfr < 30:
+            dose_notes.append(f"eGFR {egfr}: Renal dose cap: 500 mg twice daily (extended interval).")
 
     elif drug_name == "Ibuprofen":
         # CKD
@@ -395,6 +490,8 @@ def evaluate_drug(patient: dict, drug_name: str) -> dict:
             reasons.append("No major contraindications identified. Use lowest effective dose for shortest duration.")
         
         dose_notes.append("Always take with food. If long-term, consider co-prescribing Omeprazole for GI protection.")
+        if suitability in ("Caution", "Avoid"):
+            dose_notes.append("If use cannot be avoided: limit to ≤1200 mg/day, for ≤3 days, at the lowest effective dose.")
 
     elif drug_name == "Paracetamol":
         # Very rarely contraindicated
@@ -412,6 +509,58 @@ def evaluate_drug(patient: dict, drug_name: str) -> dict:
         if alt > 90 or ast > 90:
             dose_notes.append("Hepatic impairment: Reduce Omeprazole dose.")
         dose_notes.append("For long-term use (>1 year), monitor Magnesium and Vitamin B12 levels.")
+
+    elif drug_name == "Empagliflozin":
+        if egfr < 20:
+            suitability = "Contraindicated"
+            reasons.append(f"eGFR {egfr} mL/min/1.73m² is <20 → do not initiate Empagliflozin at this renal function.")
+        elif egfr < 30:
+            suitability = "Caution"
+            reasons.append(f"eGFR {egfr}: glycemic benefit is reduced below eGFR 30; specialist input advised.")
+        else:
+            reasons.append(f"eGFR {egfr}: adequate renal function for Empagliflozin.")
+            dose_notes.append("Usual dose: 10 mg once daily, may increase to 25 mg once daily.")
+
+        if "type 1 diabetes" in conditions or "dka" in conditions or "diabetic ketoacidosis" in conditions:
+            suitability = "Contraindicated"
+            reasons.append("Contraindicated: SGLT2 inhibitors carry a diabetic ketoacidosis risk in Type 1 diabetes or prior DKA.")
+
+        if "diabetes" in conditions or hba1c >= 6.5:
+            reasons.append("Indicated: Diabetes diagnosed (or HbA1c ≥6.5%); also has cardiovascular and renal-protective benefit.")
+        else:
+            warnings.append("Empagliflozin is used for diabetes — patient does not appear to have a diabetes diagnosis.")
+
+        if age >= 65:
+            warnings.append("Elderly: increased risk of volume depletion/dizziness, especially if also on diuretics.")
+
+    elif drug_name == "Linagliptin":
+        reasons.append("No renal dose adjustment required at any eGFR — a key advantage over most other oral antidiabetics.")
+        dose_notes.append("Usual dose: 5 mg once daily (unchanged regardless of renal function).")
+
+        if "pancreatitis" in conditions:
+            suitability = "Avoid"
+            reasons.append("Avoid: History of pancreatitis — DPP-4 inhibitors carry a rare pancreatitis risk.")
+
+        if "diabetes" in conditions or hba1c >= 6.5:
+            reasons.append("Indicated: Diabetes diagnosed (or HbA1c ≥6.5%).")
+        else:
+            warnings.append("Linagliptin is used for diabetes — patient does not appear to have a diabetes diagnosis.")
+
+    elif drug_name == "Insulin Glargine":
+        reasons.append("Not renally cleared or dose-limited by kidney/liver function — suitable when oral agents are contraindicated.")
+
+        if egfr < 30 or alt > 90 or ast > 90:
+            dose_notes.append("Reduce starting dose in significant renal/hepatic impairment (slower insulin clearance raises hypoglycemia risk); monitor glucose closely.")
+
+        if "diabetes" in conditions or hba1c >= 6.5:
+            reasons.append("Indicated: Diabetes diagnosed (or HbA1c ≥6.5%), including when oral therapy is insufficient or contraindicated.")
+        else:
+            warnings.append("Insulin is used for diabetes — patient does not appear to have a diabetes diagnosis.")
+
+        if age >= 65:
+            warnings.append("Elderly: higher hypoglycemia risk — consider a more conservative starting dose and glucose monitoring.")
+
+        dose_notes.append("Typical starting dose: 10 units (or 0.1–0.2 units/kg) once daily, titrated to fasting glucose target.")
 
     # ── Allergy check for all drugs ───────────────────────────────────────────
     for allergy_cat, contraindicated_drugs in ALLERGY_CONTRAINDICATIONS.items():
@@ -468,6 +617,35 @@ def check_drug_interactions(drug_list: list) -> list:
                     "message":  info["message"],
                 })
     return interactions
+
+
+def get_alternatives(patient: dict, drug_name: str, suitability: str) -> list:
+    """
+    Suggest alternative drugs when `drug_name` came back Avoid/Contraindicated
+    for this patient.
+
+    Candidates come from DRUG_ALTERNATIVES, but are never returned as-is: each
+    one is re-evaluated with evaluate_drug() against this same patient, and
+    only kept if it comes back Suitable/Caution. A fixed suggestion list would
+    be unsafe on its own — e.g. Empagliflozin is itself renal-dependent, so a
+    patient whose Metformin is blocked by very low eGFR may not tolerate it
+    either.
+    """
+    if suitability not in ("Avoid", "Contraindicated"):
+        return []
+
+    alternatives = []
+    for alt_name, rationale in DRUG_ALTERNATIVES.get(drug_name, []):
+        alt_result = evaluate_drug(patient, alt_name)
+        if alt_result["suitability"] in ("Suitable", "Caution"):
+            alternatives.append({
+                "drug_name": alt_name,
+                "brand_names": DRUG_CATALOG[alt_name].get("brand_names", []),
+                "suitability": alt_result["suitability"],
+                "rationale": rationale,
+            })
+
+    return alternatives
 
 
 def generate_patient_summary(patient: dict, results: list, interactions: list) -> str:

@@ -6,7 +6,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -15,8 +15,13 @@ from clinical_engine import (
     DRUG_CATALOG,
     evaluate_drug,
     check_drug_interactions,
+    generate_patient_summary,
+    simulate_response_over_time,
+    get_alternatives,
 )
 from ml_model import get_predictor
+from report_parser import parse_lab_report
+from pharmacovigilance import get_signal
 
 app = FastAPI(
     title="GeneRx-AI API",
@@ -70,6 +75,10 @@ def health_check():
     return {
         "status": "ok",
         "ml_model_loaded": predictor.loaded,
+        "ml_model_name": predictor.active_model_name,
+        "ml_model_accuracy": predictor.accuracy,
+        "ml_model_macro_f1": predictor.macro_f1,
+        "ml_model_candidates": predictor.candidates,
         "drugs_available": len(DRUG_CATALOG),
     }
 
@@ -83,17 +92,31 @@ def get_drugs():
             "name": name,
             "category": info.get("category", ""),
             "description": info.get("description", ""),
+            "brand_names": info.get("brand_names", []),
+            "indications": info.get("indications", []),
+            "faers_signal": get_signal(name),
         })
     return {"drugs": drugs}
 
 
-@app.post("/api/assess")
-def assess_drugs(request: AssessmentRequest):
-    """Assess drugs for a patient — combines ML model + clinical rules."""
-    patient = request.patient
+def _run_assessment(patient: PatientProfile, drugs: List[str]):
+    """
+    Shared core of /api/assess and /api/report: builds the rules-engine
+    patient dict, validates + evaluates each requested drug, and checks
+    interactions. Raises HTTPException(400) for any drug not in the catalog —
+    evaluate_drug() indexes DRUG_CATALOG[drug_name] unconditionally, so an
+    unrecognized name would otherwise 500 instead of failing cleanly.
+    """
+    unknown = [d for d in drugs if d not in DRUG_CATALOG]
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown drug(s): {', '.join(unknown)}. "
+                   f"Available drugs: {', '.join(DRUG_CATALOG)}",
+        )
+
     predictor = get_predictor()
 
-    # Build patient profile dict for rules engine
     patient_dict = {
         "name": patient.name,
         "patient_id": "API",
@@ -115,20 +138,18 @@ def assess_drugs(request: AssessmentRequest):
     }
 
     results = []
-    for drug_name in request.drugs:
-        # Clinical rules assessment
+    for drug_name in drugs:
         rule_result = evaluate_drug(patient_dict, drug_name)
 
-        # ML prediction
         ml_result = predictor.predict(
             drug_name=drug_name,
             patient_age=patient.age,
             patient_sex=patient.sex,
             patient_weight=patient.weight_kg,
             num_concomitant_drugs=len(patient.current_meds),
+            current_meds=patient.current_meds,
         )
 
-        # Combine results
         combined = {
             "drug_name": drug_name,
             "suitability": rule_result["suitability"],
@@ -139,18 +160,36 @@ def assess_drugs(request: AssessmentRequest):
             "monitoring": rule_result["monitoring"],
             "side_effects": rule_result["side_effects"],
             "ml_prediction": ml_result,
+            "faers_signal": get_signal(drug_name),
+            "response_curve": simulate_response_over_time(rule_result["suitability"]),
+            "alternatives": get_alternatives(patient_dict, drug_name, rule_result["suitability"]),
         }
         results.append(combined)
 
-    # Drug interactions
-    all_drugs = request.drugs + patient.current_meds
+    all_drugs = drugs + patient.current_meds
     interactions = check_drug_interactions(all_drugs)
 
+    return patient_dict, results, interactions
+
+
+@app.post("/api/assess")
+def assess_drugs(request: AssessmentRequest):
+    """Assess drugs for a patient — combines ML model + clinical rules."""
+    _patient_dict, results, interactions = _run_assessment(request.patient, request.drugs)
+
     return {
-        "patient_name": patient.name,
+        "patient_name": request.patient.name,
         "assessments": results,
         "interactions": interactions,
     }
+
+
+@app.post("/api/report")
+def get_report(request: AssessmentRequest):
+    """Generate a downloadable plain-text clinical report for an assessment."""
+    patient_dict, results, interactions = _run_assessment(request.patient, request.drugs)
+    report_text = generate_patient_summary(patient_dict, results, interactions)
+    return {"report": report_text}
 
 
 @app.post("/api/interactions")
@@ -158,6 +197,35 @@ def check_interactions(request: InteractionRequest):
     """Check drug-drug interactions."""
     interactions = check_drug_interactions(request.drugs)
     return {"interactions": interactions}
+
+
+@app.post("/api/parse-report")
+async def parse_report(file: UploadFile = File(...)):
+    """
+    Parse an uploaded lab report PDF into PatientProfile field candidates.
+
+    This only proposes values — the frontend must pre-fill them into the
+    editable form for the user to review/correct, never submit them straight
+    into an assessment. See report_parser.py for why (extraction can fail
+    silently on unusual report layouts, and a wrong eGFR/LDL value changes a
+    suitability verdict).
+    """
+    if file.content_type not in ("application/pdf", "application/octet-stream"):
+        raise HTTPException(status_code=400, detail="Please upload a PDF file.")
+
+    file_bytes = await file.read()
+    try:
+        result = parse_lab_report(file_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read this PDF: {e}")
+
+    if not result["patient_fields"]:
+        result["warning"] = (
+            "No recognized lab values found in this report. "
+            "You can still enter values manually below."
+        )
+
+    return result
 
 
 from fastapi.staticfiles import StaticFiles

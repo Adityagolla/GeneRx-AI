@@ -1,7 +1,14 @@
 fastapi
 uvicorn
+python-multipart
 pandas
 numpy
 scikit-learn
 xgboost
 requests
+pdfplumber
+
+# CPU-only wheel — keeps the Docker image small; the model here is a tiny
+# tabular MLP with no need for CUDA.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch

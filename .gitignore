@@ -29,3 +29,6 @@ desktop.ini
 
 # Node
 node_modules/
+
+# OMC tooling state (not part of this project's source)
+.omc/
